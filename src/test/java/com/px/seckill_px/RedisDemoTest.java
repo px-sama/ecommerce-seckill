@@ -20,4 +20,12 @@ public class RedisDemoTest {
         System.out.println(stock);
     }
 
+    @Test
+    public void stockDeductValidatorTest(){
+        boolean result =  redisService.stockDeductValidator("stock:19");
+        System.out.println("result:"+result);
+        String stock =  redisService.getValue("stock:19");
+        System.out.println("stock:"+stock);
+    }
+
 }
