@@ -1,28 +1,40 @@
 package com.px.seckill_px.web;
 
+import com.px.seckill_px.db.dao.OrderDao;
 import com.px.seckill_px.db.dao.SeckillActivityDao;
 import com.px.seckill_px.db.dao.SeckillCommodityDao;
+import com.px.seckill_px.db.po.Order;
 import com.px.seckill_px.db.po.SeckillActivity;
 import com.px.seckill_px.db.po.SeckillCommodity;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.px.seckill_px.service.SeckillActivityService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.ModelAndView;
 
+import javax.annotation.Resource;
 import java.math.BigDecimal;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Controller
 public class SeckillActivityController {
-    @Autowired
+    @Resource
     private SeckillActivityDao seckillActivityDao;
 
-    @Autowired
+    @Resource
     private SeckillCommodityDao seckillCommodityDao;
+
+    @Resource
+    SeckillActivityService seckillActivityService;
+
+    @Resource
+    OrderDao orderDao;
     @RequestMapping("/addSeckillActivity")
     public String addSeckillActivity() {
         return "add_activity";
@@ -81,5 +93,56 @@ public class SeckillActivityController {
         resultMap.put("commodityName", seckillCommodity.getCommodityName());
         resultMap.put("commodityDesc", seckillCommodity.getCommodityDesc());
         return "seckill_item";
+    }
+
+
+    @RequestMapping("/seckill/buy/{userId}/{seckillActivityId}")
+    public ModelAndView seckillCommodity(@PathVariable long userId, @PathVariable long seckillActivityId) {
+        boolean stockValidateResult = false;
+        ModelAndView modelAndView = new ModelAndView();
+        try {
+            /*
+             * 确认是否能够进行秒杀 */
+            stockValidateResult =
+                    seckillActivityService.seckillStockValidator(seckillActivityId);
+            if (stockValidateResult) {
+                Order order = seckillActivityService.createOrder(seckillActivityId, userId);
+                modelAndView.addObject("resultInfo","Success，creating Order，Order ID:"
+                        + order.getOrderNo());
+                modelAndView.addObject("orderNo",order.getOrderNo());
+            } else { modelAndView.addObject("resultInfo","Sorry, there is not enough goods");
+            }
+        } catch (Exception e) {
+            log.error("System failed" + e.toString());
+            modelAndView.addObject("resultInfo","Failed to place the order!"); }
+        modelAndView.setViewName("seckill_result");
+        return modelAndView;
+    }
+    /**
+     * 订单查询
+     * @param orderNo * @return
+     */
+    @RequestMapping("/seckill/orderQuery/{orderNo}")
+    public ModelAndView orderQuery(@PathVariable String orderNo) {
+        log.info("订单查询，订单号:" + orderNo);
+        Order order = orderDao.queryOrder(orderNo);
+        ModelAndView modelAndView = new ModelAndView();
+        if (order != null) {
+            modelAndView.setViewName("order");
+            modelAndView.addObject("order", order);
+            SeckillActivity seckillActivity =
+                    seckillActivityDao.querySeckillActivityById(order.getSeckillActivityId());
+            modelAndView.addObject("seckillActivity", seckillActivity);
+        } else {
+            modelAndView.setViewName("order_wait");
+        }
+        return modelAndView;
+    }
+    /**
+     * 订单支付 * @return */
+    @RequestMapping("/seckill/payOrder/{orderNo}")
+    public String payOrder(@PathVariable String orderNo) throws Exception {
+        seckillActivityService.payOrderProcess(orderNo);
+        return "redirect:/seckill/orderQuery/" + orderNo;
     }
 }
