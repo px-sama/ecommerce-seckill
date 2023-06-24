@@ -1,5 +1,6 @@
 package com.px.seckill_px;
 
+import com.px.seckill_px.service.SeckillActivityService;
 import com.px.seckill_px.util.RedisService;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -10,6 +11,9 @@ import javax.annotation.Resource;
 public class RedisDemoTest {
     @Resource
     private RedisService redisService;
+
+    @Resource
+    SeckillActivityService seckillActivityService;
     @Test
     public void stockTest(){
         redisService.setValue("stock:19",10L);
@@ -26,6 +30,11 @@ public class RedisDemoTest {
         System.out.println("result:"+result);
         String stock =  redisService.getValue("stock:19");
         System.out.println("stock:"+stock);
+    }
+
+    @Test
+    public void pushSeckillInfoToRedisTest() {
+        seckillActivityService.pushSeckillInfoToRedis(19);
     }
 
 }
