@@ -7,6 +7,7 @@ import com.px.seckill_px.db.po.Order;
 import com.px.seckill_px.db.po.SeckillActivity;
 import com.px.seckill_px.db.po.SeckillCommodity;
 import com.px.seckill_px.service.SeckillActivityService;
+import com.px.seckill_px.util.RedisService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -32,6 +33,9 @@ public class SeckillActivityController {
 
     @Resource
     SeckillActivityService seckillActivityService;
+
+    @Resource
+    private RedisService redisService;
 
     @Resource
     OrderDao orderDao;
@@ -102,6 +106,15 @@ public class SeckillActivityController {
         ModelAndView modelAndView = new ModelAndView();
         try {
             /*
+             * 判断用户是否在已购名单中
+             */
+            if (redisService.isInLimitMember(seckillActivityId, userId)) {
+            //提示用户已经在限购名单中，返回结果
+                modelAndView.addObject("resultInfo", "Sorry, you are in restriction list");
+                modelAndView.setViewName("seckill_result");
+                return modelAndView;
+            }
+            /*
              * 确认是否能够进行秒杀 */
             stockValidateResult =
                     seckillActivityService.seckillStockValidator(seckillActivityId);
@@ -110,6 +123,8 @@ public class SeckillActivityController {
                 modelAndView.addObject("resultInfo","Success，creating Order，Order ID:"
                         + order.getOrderNo());
                 modelAndView.addObject("orderNo",order.getOrderNo());
+                //添加用户到已购名单中
+                redisService.addLimitMember(seckillActivityId, userId);
             } else { modelAndView.addObject("resultInfo","Sorry, there is not enough goods");
             }
         } catch (Exception e) {

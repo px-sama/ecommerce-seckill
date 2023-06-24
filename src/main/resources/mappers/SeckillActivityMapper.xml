@@ -173,6 +173,12 @@
     SET lock_stock = lock_stock - 1
     where id = #{id,jdbcType=BIGINT}
   </update>
+  <update id="revertStock" parameterType="java.lang.Long">
+    update seckill_activity
+    SET available_stock = available_stock + 1,
+        lock_stock = lock_stock - 1
+    where id = #{id,jdbcType=BIGINT}
+  </update>
 
   <select id="querySeckillActivitysByStatus" parameterType="java.lang.Integer"
           resultMap="BaseResultMap">
