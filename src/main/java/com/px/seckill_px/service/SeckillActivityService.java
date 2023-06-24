@@ -3,8 +3,10 @@ package com.px.seckill_px.service;
 import com.alibaba.fastjson.JSON;
 import com.px.seckill_px.db.dao.OrderDao;
 import com.px.seckill_px.db.dao.SeckillActivityDao;
+import com.px.seckill_px.db.dao.SeckillCommodityDao;
 import com.px.seckill_px.db.po.Order;
 import com.px.seckill_px.db.po.SeckillActivity;
+import com.px.seckill_px.db.po.SeckillCommodity;
 import com.px.seckill_px.mq.RocketMQService;
 import com.px.seckill_px.util.RedisService;
 import com.px.seckill_px.util.SnowFlake;
@@ -24,6 +26,9 @@ public class SeckillActivityService {
     private SeckillActivityDao seckillActivityDao;
 
     @Resource
+    SeckillCommodityDao seckillCommodityDao;
+
+    @Resource
     private RocketMQService rocketMQService;
 
     @Resource
@@ -36,10 +41,22 @@ public class SeckillActivityService {
         return redisService.stockDeductValidator(key);
     }
 
+    /**
+     * 将秒杀详情相关信息倒入redis
+     * @param seckillActivityId
+     */
+    public void pushSeckillInfoToRedis(long seckillActivityId) {
+        SeckillActivity seckillActivity = seckillActivityDao.querySeckillActivityById(seckillActivityId);
+//        System.out.println(seckillActivity);
+        redisService.setValue("seckillActivity:" + seckillActivityId, JSON.toJSONString(seckillActivity));
+        SeckillCommodity seckillCommodity = seckillCommodityDao.querySeckillCommodityById(seckillActivity.getCommodityId());
+        redisService.setValue("seckillCommodity:" + seckillActivity.getCommodityId(), JSON.toJSONString(seckillCommodity));
+    }
+
     public Order createOrder(long seckillActivityId, long userId) throws Exception{
-        SeckillActivity seckillActivity = seckillActivityDao.querySeckillActivityById(seckillActivityId) ;
+        SeckillActivity seckillActivity = seckillActivityDao.querySeckillActivityById(seckillActivityId);
         Order order = new Order();
-        // use snowflase algorithm to generate ID
+        // use snowflake algorithm to generate ID
         order.setOrderNo(String.valueOf(snowFlake.nextId()));
         order.setSeckillActivityId(seckillActivity.getId());
         order.setUserId(userId);
