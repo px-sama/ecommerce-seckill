@@ -1,5 +1,8 @@
 package com.px.seckill_px.web;
 
+import com.alibaba.csp.sentinel.Entry;
+import com.alibaba.csp.sentinel.SphU;
+import com.alibaba.csp.sentinel.slots.block.BlockException;
 import com.alibaba.fastjson.JSON;
 import com.px.seckill_px.db.dao.OrderDao;
 import com.px.seckill_px.db.dao.SeckillActivityDao;
@@ -81,9 +84,14 @@ public class SeckillActivityController {
     public String activityList(
             Map<String, Object> resultMap
     ) {
-        List<SeckillActivity> seckillActivities = seckillActivityDao.querySeckillActivitysByStatus(1);
-        resultMap.put("seckillActivities", seckillActivities);
-        return "seckill_activity";
+        try (Entry entry = SphU.entry("seckills")) {
+            List<SeckillActivity> seckillActivities = seckillActivityDao.querySeckillActivitysByStatus(1);
+            resultMap.put("seckillActivities", seckillActivities);
+            return "seckill_activity";
+        } catch (BlockException ex) {
+            log.error("Search activity is being restricted at the moment. "+ex.toString());
+            return "wait";
+        }
     }
 
     @RequestMapping("/item/{seckillActivityId}")
